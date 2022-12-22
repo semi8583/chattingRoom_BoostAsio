@@ -117,7 +117,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/analyze:stacksize16388 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>C:\Users\secrettown\source\repos\Server\Server\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\secrettown\source\repos\chattingRoom_BoostAsioStrand\Server\Server\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,7 +125,7 @@
       <StackReserveSize>9000000</StackReserveSize>
       <StackCommitSize>9000000</StackCommitSize>
       <LargeAddressAware>true</LargeAddressAware>
-      <AdditionalLibraryDirectories>C:\Users\secrettown\source\repos\Server\Server\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\secrettown\source\repos\chattingRoom_BoostAsioStrand\Server\Server\lib</AdditionalLibraryDirectories>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -160,9 +160,6 @@
     <ClInclude Include="S2C_PID_ACK_generated.h" />
     <ClInclude Include="S2C_ROOM_ENTER_ACK_generated.h" />
     <ClInclude Include="S2C_ROOM_ENTER_NTY_generated.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

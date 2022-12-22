@@ -3,6 +3,11 @@
 #include <thread>
 #include <charconv>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread.hpp>
+#include <boost/shared_ptr.hpp>
+#include <string>
+#include <boost/thread/mutex.hpp>
 #include <SDKDDKVER.h> //이게 없으면 컴파일할 때 warning을 낸다.
 //boost asio를 컴파일하는데, 컴파일하는 윈도우 라이브러리의 버전을 알 수 없다는 에러.
 //이 헤더를 넣으면 경고가 사라지며 깔끔해진다.
@@ -16,7 +21,6 @@
 #include "S2C_ROOM_ENTER_ACK_generated.h"
 #include "S2C_ROOM_ENTER_NTY_generated.h"
 
-#pragma comment(lib, "ws2_32.lib")//#include <WinSock2.h> 사용하기 위한  ws2_32.lib 추가, 이게 있어야 윈도우에 소켓을 사용 가능
 using namespace std;
 using boost::asio::ip::tcp;
 
@@ -35,12 +39,13 @@ static CHAR Port[] = "3587";
 
 //SOCKET hSocket; // 소켓 생성하는 함수
 boost::asio::io_context io_context;
-boost::asio::ip::tcp::socket hSocket(io_context); // 소켓과 io_context가 등록
 boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(IP), atoi(Port));
+boost::asio::ip::tcp::socket hSocket(io_context, ep.protocol()); // 소켓과 io_context가 등록
+
 boost::system::error_code error;
 
 bool threadStop = true;
-bool mainLoop = true;
+bool mainLoop = false;
 bool mainFinish = true;
 
 int pid;
@@ -68,6 +73,7 @@ INT main(int argc, char* argv[])
 {
 	threadStop = true;
 	hSocket.async_connect(ep, Char_Recv);
+
 	for (int i = 0; i < 2; ++i) {
 		thread{ [&]() {
 			io_context.run();
@@ -140,7 +146,7 @@ void ChattingEcho()
 		int sendReturn;
 
 		builder.Finish(CreateC2S_CHATECHO_REQ(builder, strlen(input) + 16, MenuNum, pid, strlen(input), builder.CreateString(input)));
-		char tmpBuffer[BUF_SIZE] = { 0, };
+		char tmpBuffer[3000] = { 0, };
 		memcpy(&tmpBuffer, builder.GetBufferPointer(), builder.GetSize());
 
 		hSocket.write_some(boost::asio::buffer(tmpBuffer), error);
@@ -276,11 +282,11 @@ void Char_Recv(const boost::system::error_code& ec)//클라이언트에서 문�
 {
 	while (threadStop) // 소켓이 돌고 있으므로 소켓 먼저 종료 시키고 스레드 종료 시키면 정상 종료
 	{
-		char tmpBuffer[BUF_SIZE] = { 0, };
-		hSocket.read_some(boost::asio::buffer(tmpBuffer, BUF_SIZE), error);
+		char tmpBuffer[3000] = { 0, };
+		hSocket.read_some(boost::asio::buffer(tmpBuffer), error);
 		if (error)
 		{
-			//throw boost::system::system_error(error);
+			throw boost::system::system_error(error);
 		}
 		else
 		{ 
@@ -297,6 +303,7 @@ void Char_Recv(const boost::system::error_code& ec)//클라이언트에서 문�
 				break;
 			case Code::PID:
 				callbackMap[PID](tmpBuffer);
+				mainLoop = true;
 				break;
 			case Code::VALID_ROOM_NO:
 				callbackMap[VALID_ROOM_NO](tmpBuffer);
@@ -306,3 +313,152 @@ void Char_Recv(const boost::system::error_code& ec)//클라이언트에서 문�
 		memset(tmpBuffer, 0, BUF_SIZE);
 	}
 }
+
+//#include <iostream>
+//#include <boost/bind.hpp>
+//#include <boost/thread.hpp>
+//#include <boost/asio.hpp>
+//#include <boost/shared_ptr.hpp>
+//#include <string>
+//#include <boost/thread/mutex.hpp>
+//
+//
+//using namespace boost;
+//using std::cout;
+//using std::endl;
+//
+//
+//class Client
+//{
+//	asio::ip::tcp::endpoint ep;
+//	asio::io_service ios;
+//	asio::ip::tcp::socket sock;
+//	boost::shared_ptr<asio::io_service::work> work;
+//	boost::thread_group thread_group;
+//	std::string sbuf;
+//	std::string rbuf;
+//	char buf[80];
+//	boost::mutex lock;
+//
+//public:
+//	Client(std::string ip_address, unsigned short port_num) :
+//		ep(asio::ip::address::from_string(ip_address), port_num),
+//		sock(ios, ep.protocol()),
+//		work(new asio::io_service::work(ios))
+//	{}
+//
+//	void Start()
+//	{
+//		for (int i = 0; i < 3; i++)
+//			thread_group.create_thread(bind(&Client::WorkerThread, this));
+//
+//		// thread 잘 만들어질때까지 잠시 기다리는 부분
+//		this_thread::sleep_for(chrono::milliseconds(100));
+//
+//		ios.post(bind(&Client::TryConnect, this));
+//
+//		thread_group.join_all();
+//	}
+//
+//private:
+//	void WorkerThread()
+//	{
+//		lock.lock();
+//		cout << "[" << boost::this_thread::get_id() << "]" << " Thread Start" << endl;
+//		lock.unlock();
+//
+//		ios.run();
+//
+//		lock.lock();
+//		cout << "[" << boost::this_thread::get_id() << "]" << " Thread End" << endl;
+//		lock.unlock();
+//	}
+//
+//	void TryConnect()
+//	{
+//		cout << "[" << boost::this_thread::get_id() << "]" << " TryConnect" << endl;
+//
+//		sock.async_connect(ep, boost::bind(&Client::OnConnect, this, _1));
+//	}
+//
+//	void OnConnect(const system::error_code& ec)
+//	{
+//		cout << "[" << boost::this_thread::get_id() << "]" << " OnConnect" << endl;
+//		if (ec)
+//		{
+//			cout << "connect failed: " << ec.message() << endl;
+//			StopAll();
+//			return;
+//		}
+//
+//		ios.post(bind(&Client::Send, this));
+//		ios.post(bind(&Client::Recieve, this));
+//	}
+//
+//	void Send()
+//	{
+//		getline(std::cin, sbuf);
+//
+//		sock.async_write_some(asio::buffer(sbuf), bind(&Client::SendHandle, this, _1));
+//	}
+//
+//	void Recieve()
+//	{
+//		sock.async_read_some(asio::buffer(buf, 80), bind(&Client::ReceiveHandle, this, _1, _2));
+//	}
+//
+//	void SendHandle(const system::error_code& ec)
+//	{
+//		if (ec)
+//		{
+//			cout << "async_read_some error: " << ec.message() << endl;
+//			StopAll();
+//			return;
+//		}
+//
+//		Send();
+//	}
+//
+//	void ReceiveHandle(const system::error_code& ec, size_t size)
+//	{
+//		if (ec)
+//		{
+//			cout << "async_write_some error: " << ec.message() << endl;
+//			StopAll();
+//			return;
+//		}
+//
+//		if (size == 0)
+//		{
+//			cout << "Server wants to close this session" << endl;
+//			StopAll();
+//			return;
+//		}
+//
+//		buf[size] = '\0';
+//		rbuf = buf;
+//
+//		lock.lock();
+//		cout << rbuf << endl;
+//		lock.unlock();
+//
+//		Recieve();
+//	}
+//
+//	void StopAll()
+//	{
+//		sock.close();
+//		work.reset();
+//	}
+//};
+//
+//
+//
+//
+//int main()
+//{
+//	Client chat("127.0.0.1", 3333);
+//	chat.Start();
+//
+//	return 0;
+//}
