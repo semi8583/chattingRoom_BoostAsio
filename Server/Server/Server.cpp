@@ -82,7 +82,7 @@ class Server
 public:
 	Server(unsigned short port_num) :
 		work(new boost::asio::io_service::work(ios)),
-		ep(boost::asio::ip::tcp::v4(), port_num),
+		ep(boost::asio::ip::tcp::v4(), port_num), // ip 주소와 포트에 접속 
 		gate(ios, ep.protocol())
 	{
 		roomList.push_back(0); // -1 번방
@@ -103,7 +103,7 @@ public:
 
 		ios.post(bind(&Server::OpenGate, this));
 
-		threadGroup.join_all();
+		threadGroup.join_all();// 스레드가 종료 될 때 까지 기다림 
 	}
 
 private:
@@ -115,7 +115,7 @@ private:
 	void OpenGate()
 	{
 		boost::system::error_code ec;
-		gate.bind(ep, ec);
+		gate.bind(ep, ec); // bind란 메소드와 객체를 묶어놓는 것 
 		if (ec)
 		{
 			cout << "bind failed: " << ec.message() << endl;
@@ -137,7 +137,8 @@ private:
 		session->sock = sock;
 		session->userIndex = userNum++;
 		session->roomNo = 0; 
-		gate.async_accept(*sock, session->ep, bind(&Server::OnAccept, this, _1, session));
+		gate.async_accept(*sock, session->ep, bind(&Server::OnAccept, this, _1, session)); //클라이언트 들어오면 아래 함수 실행
+		// async_accept 비동기 승인
 	}
 
 	void OnAccept(const boost::system::error_code& ec, Session* session)
