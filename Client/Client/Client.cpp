@@ -41,7 +41,7 @@ static CHAR Port[] = "3587";
 boost::asio::io_context io_context;
 boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(IP), atoi(Port));
 boost::asio::ip::tcp::socket hSocket(io_context, ep.protocol()); // 소켓과 io_context가 등록
-
+boost::thread_group threadGroup;
 boost::system::error_code error;
 
 bool threadStop = true;
@@ -69,16 +69,25 @@ map<int, void(*)(char*)> callbackMap =
 	{4, RecvCharValidRoomNo}
 };
 
+void WorkerThread()
+{
+	io_context.run();
+}
+
 INT main(int argc, char* argv[])
 {
 	threadStop = true;
 	hSocket.async_connect(ep, Char_Recv);
 
+	//for (int i = 0; i < 2; ++i) {
+	//	thread{ [&]() {
+	//		io_context.run();
+	//	} }.detach(); // detach 스레드가 언제 종료될지 모른다. 
+	//} // join -> 스레드가 종료되는 시점에 자원을 반환받는 것이 보장 
+
 	for (int i = 0; i < 2; ++i) {
-		thread{ [&]() {
-			io_context.run();
-		} }.detach(); // detach 스레드가 언제 종료될지 모른다. 
-	} // join -> 스레드가 종료되는 시점에 자원을 반환받는 것이 보장 
+		threadGroup.create_thread(WorkerThread);
+	} 
 
 	while (mainFinish)
 	{
@@ -286,7 +295,7 @@ void Char_Recv(const boost::system::error_code& ec)//클라이언트에서 문�
 		hSocket.read_some(boost::asio::buffer(tmpBuffer), error);
 		if (error)
 		{
-			throw boost::system::system_error(error);
+			//throw boost::system::system_error(error);
 		}
 		else
 		{ 
